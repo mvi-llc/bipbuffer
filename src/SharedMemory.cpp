@@ -65,7 +65,8 @@ std::optional<std::system_error> SharedMemory::open(SharedMemory::Access access)
       name_.c_str()); // Name of mapping object
   }
   if (!handle_) {
-    return std::system_error(GetLastError(), std::system_category(), "CreateFileMappingA");
+    const DWORD err = GetLastError();
+    return std::system_error(int(er), std::system_category(), "CreateFileMappingA");
   }
 
   capacity_ = size_;
@@ -76,7 +77,7 @@ std::optional<std::system_error> SharedMemory::open(SharedMemory::Access access)
   if (!data_) {
     const DWORD err = GetLastError();
     close();
-    return std::system_error(err, std::system_category(), "MapViewOfFile");
+    return std::system_error(int(err), std::system_category(), "MapViewOfFile");
   }
   return {};
 }
@@ -91,13 +92,14 @@ std::optional<std::system_error> SharedMemory::close() {
     if (!UnmapViewOfFile(data)) {
       const DWORD err = GetLastError();
       if (handle) { CloseHandle(handle); }
-      return std::system_error(err, std::system_category(), "UnmapViewOfFile");
+      return std::system_error(int(err), std::system_category(), "UnmapViewOfFile");
     }
   }
 
   if (handle) {
     if (!CloseHandle(handle)) {
-      return std::system_error(GetLastError(), std::system_category(), "CloseHandle");
+      const DWORD err = GetLastError();
+      return std::system_error(int(err), std::system_category(), "CloseHandle");
     }
   }
 
