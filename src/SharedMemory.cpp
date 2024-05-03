@@ -8,6 +8,7 @@
 #else
 #include <errno.h> // errno
 #include <fcntl.h> // for O_* constants
+#include <limits.h> // IWYU pragma: keep, NAME_MAX
 #include <sys/mman.h> // ::mmap(), ::munmap()
 #include <sys/stat.h> // for mode constants
 #include <unistd.h> // ::close()
@@ -119,8 +120,9 @@ std::optional<std::system_error> SharedMemory::Destroy(const std::string& name) 
 
 std::optional<std::system_error> SharedMemory::open(SharedMemory::Access access) {
   if (name_.empty() || name_.size() > NAME_MAX) {
-    return std::system_error(
-      EINVAL, std::system_category(), "name must be between 1 and 255 characters");
+    return std::system_error(EINVAL,
+      std::system_category(),
+      "name must be between 1 and " + std::to_string(NAME_MAX) + " characters");
   }
   for (const char c : name_) {
     if (!std::isalnum(c)) {

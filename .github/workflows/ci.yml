@@ -56,3 +56,4 @@ jobs:
           ninja -C build
       - name: Run tests
         run: .\build\tests\unit_tests_shm.exe
+        shell: cmd
