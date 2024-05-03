@@ -1,4 +1,4 @@
-set(PROJECT_WARNING_FLAGS
+set(CLANG_WARNING_FLAGS
   # Warnings as errors
   "-Werror"
 

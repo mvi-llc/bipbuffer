@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.19 FATAL_ERROR)
 
 project(SharedMemory LANGUAGES CXX)
 
@@ -20,7 +20,9 @@ add_library(SharedMemory SHARED
   src/BipBufferWriterReservation.cpp
   src/SharedMemory.cpp
 )
-target_compile_options(SharedMemory PRIVATE ${PROJECT_WARNING_FLAGS})
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  target_compile_options(SharedMemory PRIVATE ${CLANG_WARNING_FLAGS})
+endif()
 target_include_directories(SharedMemory PUBLIC include)
 
 if(BUILD_TESTS)
