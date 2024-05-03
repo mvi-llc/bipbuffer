@@ -66,7 +66,7 @@ std::optional<std::system_error> SharedMemory::open(SharedMemory::Access access)
   }
   if (!handle_) {
     const DWORD err = GetLastError();
-    return std::system_error(int(er), std::system_category(), "CreateFileMappingA");
+    return std::system_error(int(err), std::system_category(), "CreateFileMappingA");
   }
 
   capacity_ = size_;
