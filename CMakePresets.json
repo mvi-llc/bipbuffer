@@ -1,0 +1,63 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 19,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "default",
+      "displayName": "Default",
+      "description": "Release build with debug symbols",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "default",
+      "displayName": "Default",
+      "description": "Run tests",
+      "configurePreset": "default",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
+      },
+      "filter": {
+        "exclude": {
+          "name": "_deps"
+        },
+        "include": {
+          "name": "^unit_tests_"
+        }
+      }
+    },
+    {
+      "name": "benchmark",
+      "displayName": "Benchmark",
+      "description": "Run benchmarks",
+      "configurePreset": "default",
+      "output": {
+        "verbosity": "verbose",
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
+      },
+      "filter": {
+        "exclude": {
+          "name": "_deps"
+        },
+        "include": {
+          "name": "^benchmark_"
+        }
+      }
+    }
+  ]
+}

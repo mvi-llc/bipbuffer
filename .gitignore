@@ -30,3 +30,12 @@
 *.exe
 *.out
 *.app
+
+# clangd
+.cache/
+
+# Build output
+build/
+
+# OS files
+*.DS_Store

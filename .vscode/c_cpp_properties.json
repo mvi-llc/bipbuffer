@@ -1,0 +1,13 @@
+{
+  "configurations": [
+    {
+      "name": "C++",
+      "includePath": ["${workspaceFolder}/include"],
+      "defines": ["__INTELLISENSE__"],
+      "cStandard": "c17",
+      "cppStandard": "c++17",
+      "compileCommands": "${workspaceFolder}/build/compile_commands.json"
+    }
+  ],
+  "version": 4
+}
