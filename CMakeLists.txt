@@ -29,6 +29,10 @@ if(BUILD_TESTS)
   include(CPM)
   cpmaddpackage("gh:catchorg/Catch2@3.5.4")
   include(CTest)
+
+  # Work around dependencies including with `-I` instead of `-isystem`
+  get_target_property(CATCH2_INCLUDE_DIRS Catch2::Catch2 INTERFACE_INCLUDE_DIRECTORIES)
+
   enable_testing()
   add_subdirectory(benchmarks)
   add_subdirectory(tests)

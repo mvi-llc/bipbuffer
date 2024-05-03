@@ -99,12 +99,19 @@ std::optional<std::system_error> SharedMemory::close() {
       return std::system_error(GetLastError(), std::system_category(), "CloseHandle");
     }
   }
+
+  return {};
 }
 
-std::optional<std::system_error> SharedMemory::destroy(const std::string& name) {
+std::optional<std::system_error> SharedMemory::Destroy(const std::string& name) {
+  if (name.empty()) {
+    return std::system_error(
+      ERROR_PATH_NOT_FOUND, std::system_category(), "name must not be empty");
+  }
+
   // This is a no-op on Windows, the shared memory area is automatically
   // destroyed when the last handle is closed
-  (void)name;
+  return {};
 }
 
 #else
