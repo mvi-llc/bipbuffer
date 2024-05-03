@@ -118,7 +118,7 @@ std::optional<std::system_error> SharedMemory::Destroy(const std::string& name) 
 // POSIX shared memory implementation
 
 std::optional<std::system_error> SharedMemory::open(SharedMemory::Access access) {
-  if (name_.empty() || name_.size() > 255) {
+  if (name_.empty() || name_.size() > NAME_MAX) {
     return std::system_error(
       EINVAL, std::system_category(), "name must be between 1 and 255 characters");
   }
@@ -131,10 +131,12 @@ std::optional<std::system_error> SharedMemory::open(SharedMemory::Access access)
 
   const std::string normalizedName = "/" + name_;
   const int flags = access == Access::ReadWrite ? (O_CREAT | O_RDWR) : O_RDONLY;
-  fd_ = ::shm_open(normalizedName.c_str(), flags, S_IWUSR | S_IRUSR | S_IRGRP | S_IROTH);
+  fd_ = ::shm_open(normalizedName.c_str(), // NOLINT(cppcoreguidelines-pro-type-vararg)
+    flags,
+    S_IWUSR | S_IRUSR | S_IRGRP | S_IROTH);
   if (fd_ < 0) { return std::system_error(errno, std::system_category(), "shm_open"); }
 
-  struct stat shm_stat;
+  struct stat shm_stat = {};
   if (::fstat(fd_, &shm_stat) == -1 || shm_stat.st_size < 0) {
     ::close(fd_);
     fd_ = -1;

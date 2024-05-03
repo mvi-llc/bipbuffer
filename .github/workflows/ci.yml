@@ -55,4 +55,4 @@ jobs:
         run: |
           ninja -C build
       - name: Run tests
-        run: .\build\Debug\tests\unit_tests_shm.exe
+        run: .\build\tests\unit_tests_shm.exe
