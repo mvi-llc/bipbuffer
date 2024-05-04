@@ -16,14 +16,14 @@ public:
    */
   BipBufferWriterReservation(BipBufferWriter& writer, size_t start, size_t length, bool wraparound);
 
+  /// The reservation is committed on destruction
+  ~BipBufferWriterReservation();
+
   // No copying or moving allowed to prevent issues
   BipBufferWriterReservation(const BipBufferWriterReservation&) = delete;
   BipBufferWriterReservation& operator=(const BipBufferWriterReservation&) = delete;
   BipBufferWriterReservation(BipBufferWriterReservation&&) = delete;
   BipBufferWriterReservation& operator=(BipBufferWriterReservation&&) = delete;
-
-  /// The reservation is committed on destruction
-  ~BipBufferWriterReservation();
 
   /// Access the reserved buffer slice for writing
   uint8_t* data();

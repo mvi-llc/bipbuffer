@@ -14,6 +14,10 @@
 #include <unistd.h> // ::close()
 #endif // _WIN32
 
+#ifndef NAME_MAX
+#define NAME_MAX 255
+#endif
+
 namespace mvi {
 
 SharedMemory::SharedMemory(const std::string& name, const size_t size)
@@ -41,9 +45,10 @@ size_t SharedMemory::capacity() const {
 // Windows shared memory implementation
 
 std::optional<std::system_error> SharedMemory::open(SharedMemory::Access access) {
-  if (name_.empty() || name_.size() > 255) {
-    return std::system_error(
-      EINVAL, std::system_category(), "name must be between 1 and 255 characters");
+  if (name_.empty() || name_.size() > NAME_MAX) {
+    return std::system_error(EINVAL,
+      std::system_category(),
+      "name must be between 1 and " + std::to_string(NAME_MAX) + " characters");
   }
   for (const char c : name_) {
     if (!std::isalnum(c)) {
@@ -112,8 +117,16 @@ std::optional<std::system_error> SharedMemory::Destroy(const std::string& name) 
       ERROR_PATH_NOT_FOUND, std::system_category(), "name must not be empty");
   }
 
-  // This is a no-op on Windows, the shared memory area is automatically
-  // destroyed when the last handle is closed
+  // On Windows, the shared memory area is automatically destroyed when the last
+  // handle is closed. So instead we check if the shared memory area exists and
+  // return an error if it does
+  const HANDLE handle = OpenFileMappingA(FILE_MAP_READ, FALSE, name.c_str());
+  if (handle) {
+    CloseHandle(handle);
+    return std::system_error(
+      ERROR_SHARING_VIOLATION, std::system_category(), "shared memory is still open");
+  }
+
   return {};
 }
 
@@ -227,7 +240,7 @@ std::optional<std::system_error> SharedMemory::Destroy(const std::string& name) 
   }
   const std::string normalizedName = name.front() == '/' ? name : "/" + name;
 
-  if (::shm_unlink(normalizedName.c_str()) != 0) {
+  if (::shm_unlink(normalizedName.c_str()) != 0 && errno != ENOENT) {
     return std::system_error(errno, std::system_category(), "shm_unlink");
   }
   return {};

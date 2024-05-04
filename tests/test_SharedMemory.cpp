@@ -12,7 +12,7 @@ TEST_CASE("SharedMemory basic lifecycle", "[shm]") {
   constexpr size_t SIZE = 1024;
 
   // Reset to a known state
-  (void)mvi::SharedMemory::Destroy(NAME);
+  REQUIRE_NO_ERROR(mvi::SharedMemory::Destroy(NAME));
 
   mvi::SharedMemory shmWriter(NAME, SIZE);
   mvi::SharedMemory shmReader(NAME, SIZE);
@@ -61,12 +61,12 @@ TEST_CASE("SharedMemory increasing sizes", "[shm]") {
   constexpr const char* NAME = "sizes";
 
   // Reset to a known state
-  (void)mvi::SharedMemory::Destroy(NAME);
+  REQUIRE_NO_ERROR(mvi::SharedMemory::Destroy(NAME));
 
   // Create shms with powers of 2 from 1 to 16MB
   constexpr size_t MAX_SIZE = 16 * 1024 * 1024;
   for (size_t size = 1; size < MAX_SIZE; size *= 2) {
-    (void)mvi::SharedMemory::Destroy(NAME);
+    REQUIRE_NO_ERROR(mvi::SharedMemory::Destroy(NAME));
 
     mvi::SharedMemory shm(NAME, size);
     auto err = shm.open(Access::ReadWrite);
@@ -85,7 +85,7 @@ TEST_CASE("SharedMemory decreasing size", "[shm]") {
   constexpr const char* NAME = "decreasing";
 
   // Reset to a known state
-  (void)mvi::SharedMemory::Destroy(NAME);
+  REQUIRE_NO_ERROR(mvi::SharedMemory::Destroy(NAME));
 
   // Create shm with size 8 and write to the first four bytes
   constexpr size_t EIGHT = 8;
@@ -94,14 +94,16 @@ TEST_CASE("SharedMemory decreasing size", "[shm]") {
   REQUIRE_NO_ERROR(err);
   std::array<char, 4> data = {'A', 'B', 'C', 'D'};
   std::copy(data.begin(), data.end(), shm.as<char>());
-  err = shm.close();
-  REQUIRE_NO_ERROR(err);
 
   // Open the shm with size 4 and read from it
-  shm = mvi::SharedMemory(NAME, 4);
-  err = shm.open(Access::ReadOnly);
+  mvi::SharedMemory shmReader(NAME, 4);
+  err = shmReader.open(Access::ReadOnly);
   REQUIRE_NO_ERROR(err);
   CHECK(std::equal(data.begin(), data.end(), shm.as<char>()));
+
+  // Close the shms
+  REQUIRE_NO_ERROR(shm.close());
+  REQUIRE_NO_ERROR(shmReader.close());
 
   // Destroy the shared memory
   err = mvi::SharedMemory::Destroy(NAME);
@@ -115,9 +117,9 @@ TEST_CASE("SharedMemory out of order operations", "[shm]") {
   // Reset to a known state
   mvi::SharedMemory::Destroy(NAME);
 
-  // Destroying non-existent shm should error
+  // Destroying non-existent shm should succeed
   auto err = mvi::SharedMemory::Destroy(NAME);
-  REQUIRE(err);
+  REQUIRE_NO_ERROR(err);
 
   // Closing without opening should succeed
   mvi::SharedMemory shm(NAME, SIZE);
@@ -134,17 +136,17 @@ TEST_CASE("SharedMemory invalid usage", "[shm]") {
   constexpr size_t SIZE = 1024;
   const auto access = GENERATE(Access::ReadOnly, Access::ReadWrite);
 
-  // leading slash
+  // Leading slash
   mvi::SharedMemory shm("/invalid", SIZE);
   auto err = shm.open(access);
   CHECK(err);
 
-  // non-alphanumeric
+  // Non-alphanumeric
   shm = mvi::SharedMemory("not valid", SIZE);
   err = shm.open(access);
   CHECK(err);
 
-  // more than 255 characters
+  // More than 255 characters
   constexpr size_t MAX_NAME_SIZE = 255;
   std::string longName(MAX_NAME_SIZE + 1, 'x');
   shm = mvi::SharedMemory(longName, SIZE);
@@ -152,9 +154,15 @@ TEST_CASE("SharedMemory invalid usage", "[shm]") {
   CHECK(err);
 
   // Valid name, invalid size
-  mvi::SharedMemory::Destroy("valid");
+  REQUIRE_NO_ERROR(mvi::SharedMemory::Destroy("valid"));
   shm = mvi::SharedMemory("valid", 0);
   err = shm.open(access);
+  CHECK(err);
+
+  // Read-only access to non-existent shm
+  REQUIRE_NO_ERROR(mvi::SharedMemory::Destroy("nonexistent"));
+  shm = mvi::SharedMemory("nonexistent", SIZE);
+  err = shm.open(Access::ReadOnly);
   CHECK(err);
 }
 
@@ -163,7 +171,7 @@ TEST_CASE("SharedMemory persistence", "[shm]") {
   constexpr size_t SIZE = 64;
 
   // Reset to a known state
-  (void)mvi::SharedMemory::Destroy(NAME);
+  REQUIRE_NO_ERROR(mvi::SharedMemory::Destroy(NAME));
 
   mvi::SharedMemory shm(NAME, SIZE);
   auto err = shm.open(Access::ReadWrite);

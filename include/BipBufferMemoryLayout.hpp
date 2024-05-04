@@ -12,7 +12,7 @@ struct alignas(alignof(std::atomic<size_t>)) BipBufferMemoryLayout {
   size_t bufferSize; // Size of the buffer
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wc99-extensions"
-  uint8_t buffer[]; // Circular buffer
+  uint8_t buffer[]; // Circular buffer. NOLINT(cppcoreguidelines-avoid-c-arrays)
 #pragma clang diagnostic pop
 
   /**
