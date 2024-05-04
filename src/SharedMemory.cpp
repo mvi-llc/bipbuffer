@@ -29,6 +29,49 @@ SharedMemory::~SharedMemory() {
   close();
 }
 
+#ifdef _WIN32
+SharedMemory::SharedMemory(SharedMemory&& other) noexcept
+  : name_(std::move(other.name_)),
+    normalizedName_(other.normalizedName_),
+    data_(other.data_),
+    size_(other.size_),
+    capacity_(other.capacity_),
+    handle_(other.handle_) {
+  other.data_ = nullptr;
+  other.handle_ = nullptr;
+}
+#else
+SharedMemory::SharedMemory(SharedMemory&& other) noexcept
+  : name_(std::move(other.name_)),
+    normalizedName_(other.normalizedName_),
+    data_(other.data_),
+    size_(other.size_),
+    capacity_(other.capacity_),
+    fd_(other.fd_) {
+  other.data_ = nullptr;
+  other.fd_ = -1;
+}
+#endif
+
+SharedMemory& SharedMemory::operator=(SharedMemory&& other) noexcept {
+  if (this != &other) {
+    close(); // Close current resource if open
+    name_ = std::move(other.name_);
+    normalizedName_ = other.normalizedName_;
+    data_ = other.data_;
+    size_ = other.size_;
+    capacity_ = other.capacity_;
+#ifdef _WIN32
+    handle_ = other.handle_;
+    other.handle_ = nullptr;
+#else
+    fd_ = other.fd_;
+    other.fd_ = -1;
+#endif
+  }
+  return *this;
+}
+
 const std::string& SharedMemory::name() const {
   return name_;
 }
@@ -46,14 +89,15 @@ size_t SharedMemory::capacity() const {
 
 std::optional<std::system_error> SharedMemory::open(SharedMemory::Access access) {
   if (name_.empty() || name_.size() > NAME_MAX) {
-    return std::system_error(EINVAL,
+    return std::system_error(ERROR_INVALID_PARAMETER,
       std::system_category(),
       "name must be between 1 and " + std::to_string(NAME_MAX) + " characters");
   }
   for (const char c : name_) {
     if (!std::isalnum(c)) {
-      return std::system_error(
-        EINVAL, std::system_category(), "name must only contain alpha-numeric characters");
+      return std::system_error(ERROR_INVALID_PARAMETER,
+        std::system_category(),
+        "name must only contain alpha-numeric characters");
     }
   }
 
@@ -108,7 +152,9 @@ std::optional<std::system_error> SharedMemory::close() {
   if (handle) {
     if (!CloseHandle(handle)) {
       const DWORD err = GetLastError();
-      return std::system_error(int(err), std::system_category(), "CloseHandle");
+      if (err != ERROR_INVALID_HANDLE) {
+        return std::system_error(int(err), std::system_category(), "CloseHandle");
+      }
     }
   }
 
@@ -118,7 +164,7 @@ std::optional<std::system_error> SharedMemory::close() {
 std::optional<std::system_error> SharedMemory::Destroy(const std::string& name) {
   if (name.empty()) {
     return std::system_error(
-      ERROR_PATH_NOT_FOUND, std::system_category(), "name must not be empty");
+      ERROR_INVALID_PARAMETER, std::system_category(), "name must not be empty");
   }
 
   // On Windows, the shared memory area is automatically destroyed when the last

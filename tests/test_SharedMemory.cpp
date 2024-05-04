@@ -5,6 +5,10 @@
 
 #include <array>
 
+#ifdef _WIN32
+#include <winerror.h>
+#endif
+
 using Access = mvi::SharedMemory::Access;
 
 TEST_CASE("SharedMemory basic lifecycle", "[shm]") {
@@ -189,6 +193,9 @@ TEST_CASE("SharedMemory persistence", "[shm]") {
   std::copy(data.begin(), data.end(), shm.as<char>());
   CHECK(std::equal(data.begin(), data.end(), shm.as<char>()));
 
+  // This has platform-specific behavior. On POSIX systems, the shared memory area will persist
+  // until the system is rebooted or the shared memory area is explicitly destroyed. On Windows,
+  // closing the (only) handle here will destroy the shared memory area
   err = shm.close();
   REQUIRE_NO_ERROR(err);
 
@@ -196,7 +203,14 @@ TEST_CASE("SharedMemory persistence", "[shm]") {
   err = shm.open(Access::ReadWrite);
   REQUIRE_NO_ERROR(err);
 
+#ifdef _WIN32
+  // Expect this to be zero-initialized on Windows
+  std::array<char, SIZE> zero{};
+  CHECK(std::equal(zero.begin(), zero.end(), shm.as<char>()));
+#else
+  // Expect this to be the same as the previous data on POSIX
   CHECK(std::equal(data.begin(), data.end(), shm.as<char>()));
+#endif
 
   err = shm.close();
   REQUIRE_NO_ERROR(err);
@@ -206,11 +220,21 @@ TEST_CASE("SharedMemory persistence", "[shm]") {
   err = shm.open(Access::ReadWrite);
   REQUIRE_NO_ERROR(err);
 
-  // Create a shm with the same name and considerably larger size, it should fail
+  // Create a shm with the same name and considerably larger size. This triggers the destructor
+  // which closes the shared memory area. On POSIX systems, the shared memory area will persist
+  // so the following open with a larger size will fail. On Windows, the shared memory area will
+  // be destroyed and the open will succeed
   constexpr size_t LARGER_SIZE = SIZE + 1024 * 1024;
   shm = mvi::SharedMemory(NAME, LARGER_SIZE);
   err = shm.open(Access::ReadWrite);
-  CHECK(err);
+
+#ifdef _WIN32
+  REQUIRE_NO_ERROR(err);
+  REQUIRE_NO_ERROR(shm.close());
+#else
+  REQUIRE(err);
+  REQUIRE(err->code().value() == EOVERFLOW);
+#endif
 
   // Destroy the shared memory
   err = mvi::SharedMemory::Destroy(NAME);

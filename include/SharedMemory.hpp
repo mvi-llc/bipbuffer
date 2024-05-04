@@ -29,10 +29,13 @@ public:
   /// Close the shared memory area if it is still open on destruction
   ~SharedMemory();
 
-  SharedMemory(const SharedMemory&) = default;
-  SharedMemory& operator=(const SharedMemory&) = default;
-  SharedMemory(SharedMemory&&) = default;
-  SharedMemory& operator=(SharedMemory&&) = default;
+  // No copy or assignment
+  SharedMemory(const SharedMemory&) = delete;
+  SharedMemory& operator=(const SharedMemory&) = delete;
+
+  // Move semantics are supported
+  SharedMemory(SharedMemory&&) noexcept;
+  SharedMemory& operator=(SharedMemory&&) noexcept;
 
   /**
    * Open the shared memory area for reading or writing. If the shared memory area does not exist
