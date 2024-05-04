@@ -16,9 +16,26 @@ class SharedMemory {
 public:
   enum class Access { ReadOnly, ReadWrite };
 
+  /**
+   * Construct a SharedMemory object with the given name and size. The name must be unique, contain
+   * only alpha-numeric characters, and be fewer than 256 characters. The size is the number of
+   * bytes to allocate for the shared memory area.
+   *
+   * @param name the name of the shared memory area
+   * @param size the size of the shared memory area in bytes
+   */
   SharedMemory(const std::string& name, size_t size);
 
+  /// Close the shared memory area if it is still open on destruction
   ~SharedMemory();
+
+  // No copy or assignment
+  SharedMemory(const SharedMemory&) = delete;
+  SharedMemory& operator=(const SharedMemory&) = delete;
+
+  // Move semantics are supported
+  SharedMemory(SharedMemory&&) noexcept;
+  SharedMemory& operator=(SharedMemory&&) noexcept;
 
   /**
    * Open the shared memory area for reading or writing. If the shared memory area does not exist
@@ -36,7 +53,7 @@ public:
   size_t size() const;
 
   /// Returns the total capacity in bytes of the shared memory area. This will be greater than or
-  /// equal to the size of the shared memory area.
+  /// equal to the size of the shared memory area
   size_t capacity() const;
 
   /// Returns a pointer to the start of the shared memory area
@@ -48,7 +65,8 @@ public:
   /// Closes the shared memory area
   std::optional<std::system_error> close();
 
-  /// Static method to destroy a shared memory area by name
+  /// Static method to destroy a shared memory area by name. Succeeds if the shared memory area is
+  /// successfully destroyed or does not exist
   static std::optional<std::system_error> Destroy(const std::string& name);
 
 private:

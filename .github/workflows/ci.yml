@@ -28,15 +28,8 @@ jobs:
           sudo update-alternatives --install /usr/bin/clang-tidy clang-tidy /usr/bin/clang-tidy-${{ matrix.clang-version }} 999
           sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang-${{ matrix.clang-version }} 999
           sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-${{ matrix.clang-version }} 999
-      - name: Install CMake/Ninja
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            cmake \
-            cmake-format \
-            ninja-build \
-          cmake --version
-      - uses: actions/checkout@v3
+      - uses: lukka/get-cmake@v3.22.2
+      - uses: actions/checkout@v4
       - name: clang-format
         run: clang-format --dry-run --Werror --style=file $(find include/ -name '*.hpp') $(find src/ -name '*.cpp')
       - run: make
@@ -62,4 +55,5 @@ jobs:
         run: |
           ninja -C build
       - name: Run tests
-        run: build\Debug\tests\unit_tests_shm.exe
+        run: .\build\tests\unit_tests_shm.exe
+        shell: cmd

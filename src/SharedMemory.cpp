@@ -8,10 +8,15 @@
 #else
 #include <errno.h> // errno
 #include <fcntl.h> // for O_* constants
+#include <limits.h> // IWYU pragma: keep, NAME_MAX
 #include <sys/mman.h> // ::mmap(), ::munmap()
 #include <sys/stat.h> // for mode constants
 #include <unistd.h> // ::close()
 #endif // _WIN32
+
+#ifndef NAME_MAX
+#define NAME_MAX 255
+#endif
 
 namespace mvi {
 
@@ -22,6 +27,49 @@ SharedMemory::SharedMemory(const std::string& name, const size_t size)
 
 SharedMemory::~SharedMemory() {
   close();
+}
+
+#ifdef _WIN32
+SharedMemory::SharedMemory(SharedMemory&& other) noexcept
+  : name_(std::move(other.name_)),
+    normalizedName_(other.normalizedName_),
+    data_(other.data_),
+    size_(other.size_),
+    capacity_(other.capacity_),
+    handle_(other.handle_) {
+  other.data_ = nullptr;
+  other.handle_ = nullptr;
+}
+#else
+SharedMemory::SharedMemory(SharedMemory&& other) noexcept
+  : name_(std::move(other.name_)),
+    normalizedName_(other.normalizedName_),
+    data_(other.data_),
+    size_(other.size_),
+    capacity_(other.capacity_),
+    fd_(other.fd_) {
+  other.data_ = nullptr;
+  other.fd_ = -1;
+}
+#endif
+
+SharedMemory& SharedMemory::operator=(SharedMemory&& other) noexcept {
+  if (this != &other) {
+    close(); // Close current resource if open
+    name_ = std::move(other.name_);
+    normalizedName_ = other.normalizedName_;
+    data_ = other.data_;
+    size_ = other.size_;
+    capacity_ = other.capacity_;
+#ifdef _WIN32
+    handle_ = other.handle_;
+    other.handle_ = nullptr;
+#else
+    fd_ = other.fd_;
+    other.fd_ = -1;
+#endif
+  }
+  return *this;
 }
 
 const std::string& SharedMemory::name() const {
@@ -40,14 +88,16 @@ size_t SharedMemory::capacity() const {
 // Windows shared memory implementation
 
 std::optional<std::system_error> SharedMemory::open(SharedMemory::Access access) {
-  if (name_.empty() || name_.size() > 255) {
-    return std::system_error(
-      EINVAL, std::system_category(), "name must be between 1 and 255 characters");
+  if (name_.empty() || name_.size() > NAME_MAX) {
+    return std::system_error(ERROR_INVALID_PARAMETER,
+      std::system_category(),
+      "name must be between 1 and " + std::to_string(NAME_MAX) + " characters");
   }
   for (const char c : name_) {
     if (!std::isalnum(c)) {
-      return std::system_error(
-        EINVAL, std::system_category(), "name must only contain alpha-numeric characters");
+      return std::system_error(ERROR_INVALID_PARAMETER,
+        std::system_category(),
+        "name must only contain alpha-numeric characters");
     }
   }
 
@@ -58,13 +108,18 @@ std::optional<std::system_error> SharedMemory::open(SharedMemory::Access access)
       0, // High-order DWORD(size_)
       DWORD(size_), // Low-order DWORD(size_)
       name_.c_str()); // Name of mapping object
+    if (!handle_) {
+      const DWORD err = GetLastError();
+      return std::system_error(int(err), std::system_category(), "CreateFileMappingA");
+    }
   } else {
     handle_ = OpenFileMappingA(FILE_MAP_READ, // Read access
       FALSE, // Do not inherit the name
       name_.c_str()); // Name of mapping object
-  }
-  if (!handle_) {
-    return std::system_error(GetLastError(), std::system_category(), "CreateFileMappingA");
+    if (!handle_) {
+      const DWORD err = GetLastError();
+      return std::system_error(int(err), std::system_category(), "OpenFileMappingA");
+    }
   }
 
   capacity_ = size_;
@@ -75,7 +130,7 @@ std::optional<std::system_error> SharedMemory::open(SharedMemory::Access access)
   if (!data_) {
     const DWORD err = GetLastError();
     close();
-    return std::system_error(err, std::system_category(), "MapViewOfFile");
+    return std::system_error(int(err), std::system_category(), "MapViewOfFile");
   }
   return {};
 }
@@ -90,30 +145,49 @@ std::optional<std::system_error> SharedMemory::close() {
     if (!UnmapViewOfFile(data)) {
       const DWORD err = GetLastError();
       if (handle) { CloseHandle(handle); }
-      return std::system_error(err, std::system_category(), "UnmapViewOfFile");
+      return std::system_error(int(err), std::system_category(), "UnmapViewOfFile");
     }
   }
 
   if (handle) {
     if (!CloseHandle(handle)) {
-      return std::system_error(GetLastError(), std::system_category(), "CloseHandle");
+      const DWORD err = GetLastError();
+      if (err != ERROR_INVALID_HANDLE) {
+        return std::system_error(int(err), std::system_category(), "CloseHandle");
+      }
     }
   }
+
+  return {};
 }
 
-std::optional<std::system_error> SharedMemory::destroy(const std::string& name) {
-  // This is a no-op on Windows, the shared memory area is automatically
-  // destroyed when the last handle is closed
-  (void)name;
+std::optional<std::system_error> SharedMemory::Destroy(const std::string& name) {
+  if (name.empty()) {
+    return std::system_error(
+      ERROR_INVALID_PARAMETER, std::system_category(), "name must not be empty");
+  }
+
+  // On Windows, the shared memory area is automatically destroyed when the last
+  // handle is closed. So instead we check if the shared memory area exists and
+  // return an error if it does
+  const HANDLE handle = OpenFileMappingA(FILE_MAP_READ, FALSE, name.c_str());
+  if (handle) {
+    CloseHandle(handle);
+    return std::system_error(
+      ERROR_SHARING_VIOLATION, std::system_category(), "shared memory is still open");
+  }
+
+  return {};
 }
 
 #else
 // POSIX shared memory implementation
 
 std::optional<std::system_error> SharedMemory::open(SharedMemory::Access access) {
-  if (name_.empty() || name_.size() > 255) {
-    return std::system_error(
-      EINVAL, std::system_category(), "name must be between 1 and 255 characters");
+  if (name_.empty() || name_.size() > NAME_MAX) {
+    return std::system_error(EINVAL,
+      std::system_category(),
+      "name must be between 1 and " + std::to_string(NAME_MAX) + " characters");
   }
   for (const char c : name_) {
     if (!std::isalnum(c)) {
@@ -124,10 +198,12 @@ std::optional<std::system_error> SharedMemory::open(SharedMemory::Access access)
 
   const std::string normalizedName = "/" + name_;
   const int flags = access == Access::ReadWrite ? (O_CREAT | O_RDWR) : O_RDONLY;
-  fd_ = ::shm_open(normalizedName.c_str(), flags, S_IWUSR | S_IRUSR | S_IRGRP | S_IROTH);
+  fd_ = ::shm_open(normalizedName.c_str(), // NOLINT(cppcoreguidelines-pro-type-vararg)
+    flags,
+    S_IWUSR | S_IRUSR | S_IRGRP | S_IROTH);
   if (fd_ < 0) { return std::system_error(errno, std::system_category(), "shm_open"); }
 
-  struct stat shm_stat;
+  struct stat shm_stat = {};
   if (::fstat(fd_, &shm_stat) == -1 || shm_stat.st_size < 0) {
     ::close(fd_);
     fd_ = -1;
@@ -214,7 +290,7 @@ std::optional<std::system_error> SharedMemory::Destroy(const std::string& name) 
   }
   const std::string normalizedName = name.front() == '/' ? name : "/" + name;
 
-  if (::shm_unlink(normalizedName.c_str()) != 0) {
+  if (::shm_unlink(normalizedName.c_str()) != 0 && errno != ENOENT) {
     return std::system_error(errno, std::system_category(), "shm_unlink");
   }
   return {};

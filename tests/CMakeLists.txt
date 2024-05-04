@@ -1,7 +1,10 @@
 file(GLOB_RECURSE TEST_SOURCES "*.cpp")
 
 add_executable(unit_tests_shm ${TEST_SOURCES})
-target_compile_options(unit_tests_shm PRIVATE ${PROJECT_WARNING_FLAGS})
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  target_compile_options(unit_tests_shm PRIVATE ${CLANG_WARNING_FLAGS})
+endif()
 target_include_directories(unit_tests_shm PRIVATE ${PROJECT_SOURCE_DIR}/include)
-target_link_libraries(unit_tests_shm Catch2::Catch2 SharedMemory)
+target_include_directories(unit_tests_shm SYSTEM PRIVATE ${CATCH2_INCLUDE_DIRS})
+target_link_libraries(unit_tests_shm Catch2::Catch2 SharedMemoryStatic BipBufferStatic)
 add_test(NAME unit_tests_shm COMMAND unit_tests_shm --colour-mode ansi)

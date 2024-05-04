@@ -45,7 +45,7 @@ TEST_CASE("BipBuffer multi-threaded benchmark", "[bipbuffer][concurrent][benchma
       if (!data.empty()) {
         // Validate the data read matches expected test data
         totalRead += data.size();
-        reader->advance(data.size());
+        (void)reader->advance(data.size());
       } else {
         std::this_thread::yield(); // Yield thread if no data available, then try again
       }

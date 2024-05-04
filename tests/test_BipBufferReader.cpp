@@ -55,7 +55,7 @@ TEST_CASE("BipBufferReader basic lifecycle", "[bipbuffer]") {
   data = reader.read();
   REQUIRE(data.size() == 27);
   REQUIRE(std::memcmp(data.data(), testData.data() + 5, data.size()) == 0);
-  reader.advance(27);
+  REQUIRE(reader.advance(27));
   REQUIRE(layout->read.load(ORDER_STRICT) == 32);
 
   // Simulate writing after wraparound
@@ -66,7 +66,7 @@ TEST_CASE("BipBufferReader basic lifecycle", "[bipbuffer]") {
   data = reader.read();
   REQUIRE(data.size() == 1);
   REQUIRE(data.data()[0] == testData.data()[32]);
-  reader.advance(1);
+  REQUIRE(reader.advance(1));
   REQUIRE(layout->read.load(ORDER_STRICT) == 1);
 
   // Confirm there is nothing to read
@@ -82,7 +82,7 @@ TEST_CASE("BipBufferReader basic lifecycle", "[bipbuffer]") {
   data = reader.read();
   REQUIRE(data.size() == 30);
   REQUIRE(std::memcmp(data.data(), testData.data() + 33, data.size()) == 0);
-  reader.advance(data.size());
+  REQUIRE(reader.advance(data.size()));
   REQUIRE(layout->read.load(ORDER_STRICT) == 31);
 
   // Simulate another wraparound, where `last` is less than the buffer size
@@ -93,6 +93,6 @@ TEST_CASE("BipBufferReader basic lifecycle", "[bipbuffer]") {
   data = reader.read();
   REQUIRE(data.size() == 2);
   REQUIRE(std::memcmp(data.data(), testData.data() + 63, data.size()) == 0);
-  reader.advance(data.size());
+  REQUIRE(reader.advance(data.size()));
   REQUIRE(layout->read.load(ORDER_STRICT) == 2);
 }
