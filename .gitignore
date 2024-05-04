@@ -34,6 +34,9 @@
 # clangd
 .cache/
 
+# Visual Studio
+.vs/
+
 # Build output
 build/
 
