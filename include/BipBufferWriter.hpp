@@ -19,6 +19,13 @@ public:
   /// Construct a BipBufferWriter as the exclusive writer for a BipBufferMemoryLayout.
   explicit BipBufferWriter(BipBufferMemoryLayout& layout) : layout_(layout) {}
 
+  ~BipBufferWriter() = default;
+
+  BipBufferWriter(const BipBufferWriter&) = delete;
+  BipBufferWriter& operator=(const BipBufferWriter&) = delete;
+  BipBufferWriter(BipBufferWriter&&) = default;
+  BipBufferWriter& operator=(BipBufferWriter&&) = delete;
+
   /**
    * Tries to reserve a contiguous block of memory in the buffer. If successful,
    * returns a unique_ptr to a reservation. If not enough space is available,

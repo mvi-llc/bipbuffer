@@ -15,6 +15,13 @@ public:
   /// Construct a BipBufferReader as the exclusive reader for a BipBufferMemoryLayout.
   explicit BipBufferReader(BipBufferMemoryLayout& layout);
 
+  ~BipBufferReader() = default;
+
+  BipBufferReader(const BipBufferReader&) = delete;
+  BipBufferReader& operator=(const BipBufferReader&) = delete;
+  BipBufferReader(BipBufferReader&&) = default;
+  BipBufferReader& operator=(BipBufferReader&&) = delete;
+
   /// Returns the current read offset
   size_t offset() const;
 
