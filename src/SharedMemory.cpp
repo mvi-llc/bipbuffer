@@ -64,14 +64,18 @@ std::optional<std::system_error> SharedMemory::open(SharedMemory::Access access)
       0, // High-order DWORD(size_)
       DWORD(size_), // Low-order DWORD(size_)
       name_.c_str()); // Name of mapping object
+    if (!handle_) {
+      const DWORD err = GetLastError();
+      return std::system_error(int(err), std::system_category(), "CreateFileMappingA");
+    }
   } else {
     handle_ = OpenFileMappingA(FILE_MAP_READ, // Read access
       FALSE, // Do not inherit the name
       name_.c_str()); // Name of mapping object
-  }
-  if (!handle_) {
-    const DWORD err = GetLastError();
-    return std::system_error(int(err), std::system_category(), "CreateFileMappingA");
+    if (!handle_) {
+      const DWORD err = GetLastError();
+      return std::system_error(int(err), std::system_category(), "OpenFileMappingA");
+    }
   }
 
   capacity_ = size_;
