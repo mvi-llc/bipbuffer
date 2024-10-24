@@ -1,19 +1,20 @@
 #pragma once
 
-#include "BipBufferMemoryLayout.hpp"
+#include "BipBufferHeader.hpp"
 
 #include <string_view>
 
 namespace mvi {
 
 /**
- * A BipBufferReader is used to read data from a BipBufferMemoryLayout. It
- * provides methods to read data from the buffer and advance the read position.
+ * A BipBufferReader is used to read data from a bipartite circular buffer
+ * prefixed with a BipBufferHeader. It provides methods to read data from the
+ * buffer and advance the read position.
  */
 class BipBufferReader {
 public:
-  /// Construct a BipBufferReader as the exclusive reader for a BipBufferMemoryLayout.
-  explicit BipBufferReader(BipBufferMemoryLayout& layout);
+  /// Construct a BipBufferReader as the exclusive reader for a bip buffer
+  explicit BipBufferReader(BipBufferHeader& layout);
 
   ~BipBufferReader() = default;
 
@@ -41,7 +42,7 @@ public:
   [[nodiscard]] bool advance(size_t count);
 
 private:
-  BipBufferMemoryLayout& layout_;
+  BipBufferHeader& layout_;
   size_t cachedRead_;
   size_t cachedWrite_;
   size_t cachedLast_;

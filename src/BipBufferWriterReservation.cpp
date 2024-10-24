@@ -18,7 +18,7 @@ BipBufferWriterReservation::~BipBufferWriterReservation() {
 }
 
 uint8_t* BipBufferWriterReservation::data() {
-  return writer_.data() + start_;
+  return writer_.layout_.buffer() + start_;
 }
 
 size_t BipBufferWriterReservation::size() const {
