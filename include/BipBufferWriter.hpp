@@ -1,6 +1,6 @@
 #pragma once
 
-#include "BipBufferMemoryLayout.hpp"
+#include "BipBufferHeader.hpp"
 #include "BipBufferWriterReservation.hpp"
 
 #include <cstddef>
@@ -9,15 +9,15 @@
 namespace mvi {
 
 /**
- * A BipBufferWriter is used to write data into a BipBufferMemoryLayout. It
- * provides a method to reserve a contiguous block of memory in the buffer,
- * represented as a BipBufferWriterReservation. The reservation is committed
- * when the unique_ptr goes out of scope.
+ * A BipBufferWriter is used to write data into a bipartite circular buffer
+ * prefixed with a BipBufferHeader. It provides a method to reserve a contiguous
+ * block of memory in the buffer, represented as a BipBufferWriterReservation.
+ * The reservation is committed when the unique_ptr is reset or destroyed.
  */
 class BipBufferWriter {
 public:
-  /// Construct a BipBufferWriter as the exclusive writer for a BipBufferMemoryLayout.
-  explicit BipBufferWriter(BipBufferMemoryLayout& layout) : layout_(layout) {}
+  /// Construct a BipBufferWriter as the exclusive writer for a bip buffer
+  explicit BipBufferWriter(BipBufferHeader& layout) : layout_(layout) {}
 
   ~BipBufferWriter() = default;
 
@@ -43,12 +43,9 @@ public:
   std::unique_ptr<BipBufferWriterReservation> reserve(size_t length);
 
 private:
-  BipBufferMemoryLayout& layout_;
+  BipBufferHeader& layout_;
 
   friend class BipBufferWriterReservation;
-
-  // Returns a pointer to the start of the circular buffer (after the header).
-  uint8_t* data();
 
   // Commits previously reserved space: updates the `last` and `write` positions
   // in the layout header.

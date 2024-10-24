@@ -19,7 +19,7 @@ set(SHARED_MEMORY_SOURCES
 )
 
 set(BIP_BUFFER_SOURCES
-  src/BipBufferMemoryLayout.cpp
+  src/BipBufferHeader.cpp
   src/BipBufferReader.cpp
   src/BipBufferWriter.cpp
   src/BipBufferWriterReservation.cpp

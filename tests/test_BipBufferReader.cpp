@@ -9,15 +9,18 @@ constexpr auto ORDER_STRICT = std::memory_order_seq_cst;
 
 TEST_CASE("BipBufferReader basic lifecycle", "[bipbuffer]") {
   constexpr size_t BUFFER_SIZE = 64;
+  constexpr size_t ARRAY_SIZE = 256;
 
-  std::array<uint8_t, 256> testData;
+  std::array<uint8_t, ARRAY_SIZE> testData{};
   for (size_t i = 0; i < testData.size(); i++) {
-    testData[i] = uint8_t(i);
+    testData.at(i) = uint8_t(i);
   }
 
   std::array<uint8_t, BUFFER_SIZE> buffer{};
-  auto layout = mvi::BipBufferMemoryLayout::Create(buffer.data(), buffer.size());
-  REQUIRE(layout->bufferSize == BUFFER_SIZE - sizeof(mvi::BipBufferMemoryLayout));
+  auto layout = mvi::BipBufferHeader::Create(buffer.data(), buffer.size());
+  REQUIRE(layout->bufferSize == BUFFER_SIZE - sizeof(mvi::BipBufferHeader));
+
+  // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers)
 
   mvi::BipBufferReader reader{*layout};
 
@@ -26,7 +29,7 @@ TEST_CASE("BipBufferReader basic lifecycle", "[bipbuffer]") {
   REQUIRE(data.empty());
 
   // Simulate writing some data
-  std::memcpy(layout->buffer, testData.data(), 5);
+  std::memcpy(layout->buffer(), testData.data(), 5);
   layout->write.store(5, ORDER_STRICT);
 
   // Now there should be something to read
@@ -47,7 +50,7 @@ TEST_CASE("BipBufferReader basic lifecycle", "[bipbuffer]") {
   REQUIRE(currentRead == 5);
 
   // Write to the end of the buffer
-  std::memcpy(layout->buffer + 5, testData.data() + 5, 27);
+  std::memcpy(layout->buffer() + 5, testData.data() + 5, 27);
   layout->last.store(32, ORDER_STRICT);
   layout->write.store(32, ORDER_STRICT);
 
@@ -59,7 +62,7 @@ TEST_CASE("BipBufferReader basic lifecycle", "[bipbuffer]") {
   REQUIRE(layout->read.load(ORDER_STRICT) == 32);
 
   // Simulate writing after wraparound
-  std::memcpy(layout->buffer, testData.data() + 32, 1);
+  std::memcpy(layout->buffer(), testData.data() + 32, 1);
   layout->write.store(1, ORDER_STRICT);
 
   // Now there should be something to read
@@ -74,7 +77,7 @@ TEST_CASE("BipBufferReader basic lifecycle", "[bipbuffer]") {
   REQUIRE(data.empty());
 
   // Simulate writing 30 bytes
-  std::memcpy(layout->buffer + 1, testData.data() + 33, 30);
+  std::memcpy(layout->buffer() + 1, testData.data() + 33, 30);
   layout->last.store(31, ORDER_STRICT);
   layout->write.store(31, ORDER_STRICT);
 
@@ -86,7 +89,7 @@ TEST_CASE("BipBufferReader basic lifecycle", "[bipbuffer]") {
   REQUIRE(layout->read.load(ORDER_STRICT) == 31);
 
   // Simulate another wraparound, where `last` is less than the buffer size
-  std::memcpy(layout->buffer, testData.data() + 63, 2);
+  std::memcpy(layout->buffer(), testData.data() + 63, 2);
   layout->write.store(2, ORDER_STRICT);
 
   // Now there should be something to read
@@ -95,4 +98,6 @@ TEST_CASE("BipBufferReader basic lifecycle", "[bipbuffer]") {
   REQUIRE(std::memcmp(data.data(), testData.data() + 63, data.size()) == 0);
   REQUIRE(reader.advance(data.size()));
   REQUIRE(layout->read.load(ORDER_STRICT) == 2);
+
+  // NOLINTEND(cppcoreguidelines-avoid-magic-numbers)
 }
