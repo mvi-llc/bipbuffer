@@ -1,25 +1,29 @@
-#include "BipBufferMemoryLayout.hpp"
+#include "BipBufferHeader.hpp"
 
 #include <catch2/catch_all.hpp>
 
 #include <array>
 
-TEST_CASE("BipBufferMemoryLayout Create", "[bipbuffer]") {
-  STATIC_REQUIRE(sizeof(mvi::BipBufferMemoryLayout) == 32);
+TEST_CASE("BipBufferHeader Create", "[bipbuffer]") {
+  STATIC_REQUIRE(sizeof(mvi::BipBufferHeader) == 32);
 
   const size_t bufferSize = 64;
-  std::array<uint8_t, bufferSize> buffer;
+  std::array<uint8_t, bufferSize> buffer{};
 
-  auto layout = mvi::BipBufferMemoryLayout::Create(buffer.data(), buffer.size());
+  auto layout = mvi::BipBufferHeader::Create(buffer.data(), buffer.size());
 
   REQUIRE(layout != nullptr);
-  CHECK(layout->bufferSize == bufferSize - sizeof(mvi::BipBufferMemoryLayout));
+  CHECK(layout->bufferSize == bufferSize - sizeof(mvi::BipBufferHeader));
 
-  layout->read = 1;
-  layout->write = 512;
-  layout->last = 1024;
+  constexpr size_t READ_POS = 1;
+  constexpr size_t WRITE_POS = 512;
+  constexpr size_t LAST_POS = 1024;
 
-  CHECK(layout->read.load(std::memory_order_seq_cst) == 1);
-  CHECK(layout->write.load(std::memory_order_seq_cst) == 512);
-  CHECK(layout->last.load(std::memory_order_seq_cst) == 1024);
+  layout->read = READ_POS;
+  layout->write = WRITE_POS;
+  layout->last = LAST_POS;
+
+  CHECK(layout->read.load(std::memory_order_seq_cst) == READ_POS);
+  CHECK(layout->write.load(std::memory_order_seq_cst) == WRITE_POS);
+  CHECK(layout->last.load(std::memory_order_seq_cst) == LAST_POS);
 }

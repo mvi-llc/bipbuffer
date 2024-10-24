@@ -46,10 +46,6 @@ std::unique_ptr<BipBufferWriterReservation> BipBufferWriter::reserve(size_t leng
   return std::make_unique<BipBufferWriterReservation>(*this, start, length, wraparound);
 }
 
-uint8_t* BipBufferWriter::data() {
-  return reinterpret_cast<uint8_t*>(&layout_.buffer[0]);
-}
-
 void BipBufferWriter::commit(size_t start, size_t length, bool wraparound) {
   if (length == 0) { return; }
 

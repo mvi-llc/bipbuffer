@@ -12,8 +12,8 @@ TEST_CASE("BipBuffer multi-threaded benchmark", "[bipbuffer][concurrent][benchma
   constexpr size_t BUFFER_SIZE = 128;
   std::array<uint8_t, BUFFER_SIZE> buffer{};
 
-  auto layout = mvi::BipBufferMemoryLayout::Create(buffer.data(), buffer.size());
-  REQUIRE(layout->bufferSize == BUFFER_SIZE - sizeof(mvi::BipBufferMemoryLayout));
+  auto layout = mvi::BipBufferHeader::Create(buffer.data(), buffer.size());
+  REQUIRE(layout->bufferSize == BUFFER_SIZE - sizeof(mvi::BipBufferHeader));
 
   std::unique_ptr<mvi::BipBufferWriter> writer;
   std::unique_ptr<mvi::BipBufferReader> reader;

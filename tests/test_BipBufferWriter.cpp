@@ -6,14 +6,16 @@
 #include <cstring> // for memcpy
 
 constexpr auto ORDER_STRICT = std::memory_order_seq_cst;
-constexpr size_t HEADER_SIZE = sizeof(mvi::BipBufferMemoryLayout);
+constexpr size_t HEADER_SIZE = sizeof(mvi::BipBufferHeader);
 
 TEST_CASE("BipBufferWriter basic lifecycle", "[bipbuffer]") {
   constexpr size_t BUFFER_SIZE = 64;
-  std::array<uint8_t, BUFFER_SIZE> buffer;
+  std::array<uint8_t, BUFFER_SIZE> buffer{};
 
-  auto layout = mvi::BipBufferMemoryLayout::Create(buffer.data(), buffer.size());
+  auto layout = mvi::BipBufferHeader::Create(buffer.data(), buffer.size());
   REQUIRE(layout->bufferSize == 32);
+
+  // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers)
 
   mvi::BipBufferWriter writer{*layout};
 
@@ -28,8 +30,8 @@ TEST_CASE("BipBufferWriter basic lifecycle", "[bipbuffer]") {
   REQUIRE(reservation->data() == buffer.data() + HEADER_SIZE);
 
   // Write some data
-  uint8_t testData[] = {0x01, 0x02, 0x03};
-  memcpy(reservation->data(), testData, sizeof(testData));
+  std::array<uint8_t, 3> testData{0x01, 0x02, 0x03};
+  memcpy(reservation->data(), testData.data(), testData.size());
 
   // Confirm the bipbuffer header hasn't changed
   REQUIRE(layout->read.load(ORDER_STRICT) == 0);
@@ -44,10 +46,10 @@ TEST_CASE("BipBufferWriter basic lifecycle", "[bipbuffer]") {
   REQUIRE(layout->last.load(ORDER_STRICT) == 32);
 
   // Check that the data was written
-  uint8_t readData[sizeof(testData)];
-  memcpy(readData, buffer.data() + HEADER_SIZE, sizeof(readData));
-  for (size_t i = 0; i < sizeof(testData); ++i) {
-    REQUIRE(readData[i] == testData[i]);
+  std::array<uint8_t, testData.size()> readData{};
+  std::memcpy(readData.data(), buffer.data() + HEADER_SIZE, sizeof(readData));
+  for (size_t i = 0; i < testData.size(); ++i) {
+    REQUIRE(readData.at(i) == testData.at(i));
   }
 
   // Attempt to reserve more data, it will fail since the buffer is full
@@ -133,4 +135,6 @@ TEST_CASE("BipBufferWriter basic lifecycle", "[bipbuffer]") {
   REQUIRE(layout->read.load(ORDER_STRICT) == 31);
   REQUIRE(layout->write.load(ORDER_STRICT) == 32);
   REQUIRE(layout->last.load(ORDER_STRICT) == 32);
+
+  // NOLINTEND(cppcoreguidelines-avoid-magic-numbers)
 }

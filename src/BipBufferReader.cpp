@@ -2,7 +2,7 @@
 
 namespace mvi {
 
-BipBufferReader::BipBufferReader(BipBufferMemoryLayout& layout)
+BipBufferReader::BipBufferReader(BipBufferHeader& layout)
   : layout_(layout),
     cachedRead_(layout.read.load(std::memory_order_seq_cst)),
     cachedWrite_(layout.write.load(std::memory_order_seq_cst)),
@@ -17,7 +17,7 @@ std::string_view BipBufferReader::read() {
 
   if (cachedWrite_ >= cachedRead_) {
     // No wraparound
-    const char* data = reinterpret_cast<const char*>(&layout_.buffer[cachedRead_]);
+    const char* data = reinterpret_cast<const char*>(&layout_.buffer()[cachedRead_]);
     return std::string_view{data, cachedWrite_ - cachedRead_};
   } else {
     cachedLast_ = layout_.last.load(std::memory_order_seq_cst);
@@ -27,7 +27,7 @@ std::string_view BipBufferReader::read() {
     }
 
     // Wraparound case
-    const char* data = reinterpret_cast<const char*>(&layout_.buffer[cachedRead_]);
+    const char* data = reinterpret_cast<const char*>(&layout_.buffer()[cachedRead_]);
     return std::string_view{data, cachedLast_ - cachedRead_};
   }
 }
